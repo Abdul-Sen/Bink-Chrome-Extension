@@ -1,6 +1,8 @@
 window.onload = function () {
   init();
-  document.querySelector("#change-btn").addEventListener("click",unsplashGetPhotos);
+  document.querySelector("#change-btn").addEventListener("click", () => {
+    unsplashGetPhotos();
+  });
 };
 
 window.addEventListener("load", function () {
@@ -28,23 +30,9 @@ window.addEventListener("load", function () {
 });
 
 function init() {
-  handleBackgroundInit()
+  fetchImage();
   getTime();
   getQuotes();
-}
-
-
-function handleBackgroundInit(){
-  fetchImage();
-  if(shouldGetNewPhoto())unsplashGetPhotos();
-}
-const HOUR_LIMIT = 12;
-
-function shouldGetNewPhoto(){
-  const timestampFetched = parseInt(localStorage.getItem("timestampFetched"));
-  const timestampDiff = (Date.now() - timestampFetched);
-  const hourDiff = new Date(timestampDiff).getUTCHours();
-  return HOUR_LIMIT<new Date(hourDiff).getHours();
 }
 
 //api access key
@@ -55,26 +43,27 @@ function getQuotes() {
   fetch("https://quote-garden.herokuapp.com/quotes/random")
     .then((res) => res.json())
     .then((data) => {
-      document.querySelector('.quote').innerHTML = data.quoteText;
       document.querySelector(
-        ".credit"
-      ).innerHTML = `<i> by - ${data.quoteAuthor}</i></h5>`;
-      document.querySelector('#quotes').style.opacity = 1;
+        "#quotes"
+      ).innerHTML = `<br><p><b style='font-size:23'>"${data.quoteText}"</b></p><div style='font-size:20'><i> by - ${data.quoteAuthor}</i></div>`;
     });
 }
 
 function fetchImage() {
   const img = new Image();
+  document.getElementById("background-container").style.opacity = 0;
   img.onload = function () {
     document.getElementById(
       "background-container"
     ).style.backgroundImage = `url(${this.src})`;
+    document.getElementById("background-container").style.opacity = 1;
+    document.getElementById("background-container").style.opacity = 1;
   };
 
-  if (localStorage.getItem("image") === null) {
+  if (localStorage.getItem("url") === null) {
     img.src = "styles/default.jpg";
   } else {
-    img.src = localStorage.getItem("image");
+    img.src = localStorage.getItem("url");
     credit.innerHTML = `<a target="_blank">${localStorage.getItem("name")}</a>`;
     navigate.innerHTML = `<a target="_blank"  style="color : white; font-size:130%;" href="${localStorage.getItem(
       "link"
@@ -82,27 +71,16 @@ function fetchImage() {
   }
 }
 
-async function handleImageUrl(url){
-  const reader = new FileReader();
-  const blob = await fetch(url).then(res=>res.blob());
-  await reader.readAsDataURL(blob);
-  reader.onload = function(e) {
-    localStorage.setItem("image", reader.result);
-    fetchImage();
-  };
-}
-
-
 function unsplashGetPhotos() {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  fetch(`https://api.unsplash.com/photos/random${clientID}&w=${width}&h=${height}`)
+  fetch(`https://api.unsplash.com/photos/random${clientID}`)
     .then((res) => res.json())
     .then((data) => {
-      localStorage.setItem("timestampFetched", Date.now());
+      localStorage.setItem("url", data.urls.full);
       localStorage.setItem("name", data.user.name);
       localStorage.setItem("link", data.links.html);
-      handleImageUrl(data.urls.custom);
+    })
+    .then(() => {
+      fetchImage();
     })
     .catch((err) => {
       console.error(err);
@@ -113,10 +91,12 @@ function unsplashGetPhotos() {
 
 chrome.alarms.create("ChangeWallpaper", {
   // delayInMinutes: 1.0,
-  periodInMinutes: 12*60,
+  periodInMinutes: 1,
 });
 
-chrome.alarms.onAlarm.addListener(unsplashGetPhotos);
+chrome.alarms.onAlarm.addListener(function (alarm) {
+  unsplashGetPhotos(alarm);
+});
 
 //! test code ends here
 
